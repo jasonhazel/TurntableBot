@@ -136,6 +136,8 @@ class TurntableBot
   end
 
   def current_song
+    # TODO: if no current song, query TT to get it.
+    # currently this will only be set on newsong
     @song
   end
 
