@@ -1,6 +1,6 @@
 # TurntableBot
 
-[Alain Gilbert](https://github.com/alaingilbert) has done a lot of work developing the [Turntable-API](https://github.com/alaingilbert/Turntable-API) and has ported his node.js code over to Ruby, which is great.  The problem that I found though is that the Ruby port doesn't feel like Ruby.  I took it upon myself to change this.
+[Alain Gilbert](https://github.com/alaingilbert) has done a lot of work developing the [Turntable-API](https://github.com/alaingilbert/Turntable-API) and has ported his node.js code [over to Ruby](https://github.com/alaingilbert/Turntable-API/tree/master/ruby_ttapi), which is great.  The problem that I found though is that the Ruby port doesn't feel like Ruby.  I took it upon myself to change this.
 
 This is my first real Ruby project, so don't expect greatness.
 
