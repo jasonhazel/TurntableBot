@@ -6,8 +6,8 @@ This is my first real Ruby project, so don't expect greatness.
 
 ## Installation
 
-[Download the most recent version](https://github.com/mrhazel/TurntableBot/downloads)
-Install: `gem install TurnTableBot-VERSION.gem'
+* [Download the most recent version](https://github.com/mrhazel/TurntableBot/downloads)
+* Install: `gem install TurnTableBot-VERSION.gem'
 
 ## Usage
 
