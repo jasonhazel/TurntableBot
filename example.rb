@@ -25,8 +25,8 @@ TurntableBot.create do
       vote
     end
 
-    add_dj if message.text == '/dj' and message.user.id == config['admin']
-    rem_dj if message.text == '/dj' and message.user.id == config['admin']
+    add_dj if message.text == '/start_dj' and message.user.id == config['admin']
+    rem_dj if message.text == '/stop_dj' and message.user.id == config['admin']
   end
 
   # when there is a new song
