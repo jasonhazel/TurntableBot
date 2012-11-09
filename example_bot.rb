@@ -24,6 +24,8 @@ TurntableBot.create do
       speak "Just for you #{message.user.name}"
       vote
     end
+
+    add_dj if message.text == '/dj' and message.user.id == config['admin']
   end
 
   # when there is a new song
