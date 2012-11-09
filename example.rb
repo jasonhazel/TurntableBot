@@ -1,4 +1,4 @@
-require_relative "./lib/turntablebot"
+require "turntablebot"
 require "yaml"
 config = YAML::load(File.open('config.yml'))
 
@@ -26,6 +26,7 @@ TurntableBot.create do
     end
 
     add_dj if message.text == '/dj' and message.user.id == config['admin']
+    rem_dj if message.text == '/dj' and message.user.id == config['admin']
   end
 
   # when there is a new song
