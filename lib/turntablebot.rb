@@ -175,7 +175,7 @@ class TurntableBot
       send request
   end
 
-  def start_dj
+  def add_dj
     request = {"api" => "room.add_dj", "roomid" => @room }
     send request
   end
