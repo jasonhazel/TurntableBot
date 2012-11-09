@@ -180,6 +180,11 @@ class TurntableBot
     send request
   end
 
+  def rem_dj
+    request = { "api" => "room.rem_dj", "roomid" => @room }
+    send request
+  end
+
   def previous_song
     @previous_song || nil
   end
