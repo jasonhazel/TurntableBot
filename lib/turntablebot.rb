@@ -1,7 +1,5 @@
 require "rubygems"
-# require "turntablebot/websocket"
 require "turntablebot/websocket"
-# require "set"
 require "uri"
 require "net/http"
 require "json"
