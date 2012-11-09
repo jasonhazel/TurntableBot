@@ -62,17 +62,45 @@ class TurntableBot
   end
 
   def delegate data
+    # puts data
     response = JSON.parse(data[data.index("{"), data.length])
     command = response['command'].to_sym if response['command']
+
+    # fire our data listener, useful to write a logger
+    @listeners[:data].call data if @listeners[:data]
 
     # handle special data
     case command
     when :newsong
-      @song = Song.new response
+      data = response['room']['metadata']['current_song']
+      @previous_song = @song || nil
+      @song = Song.new  :id         => data['_id'],
+                        :artist     => data['metadata']['artist'],
+                        :title      => data['metadata']['song'],
+                        :username   => data['djname'],
+                        :userid     => data['djid'] 
+      @song.update
       data = @song
+    when :pmmed
+      data = Message.new :id   => response['senderid'],
+                         :type => 'pm',
+                         :text => response['text']
     when :speak
       response["type"] = "chat"
-      data = Message.new response
+      data = Message.new  :name => response['name'],
+                          :id   => response['userid'],
+                          :type => 'chat',
+                          :text => response['text']
+    when :update_votes
+      data = response['room']['metadata']
+      @song.update :up        => data['upvotes'],
+                   :down      => data['downvotes'],
+                   :listeners => data['listeners']
+
+      data = response['room']['metadata']['votelog']
+    when :registered
+      data = User.new :name => response['user'][0]['name'], 
+                      :id => response['user'][0]['userid'] 
     else
       data = response
     end
@@ -94,6 +122,13 @@ class TurntableBot
     request = {:api => "user.authenticate"}
     send request
   end
+
+
+  def roominfo
+    request = { "api" => "room.info", "roomid" => @room }
+    send request
+  end
+
 
   def connect
     # another method that is pretty much identical to the ttapi
@@ -135,43 +170,67 @@ class TurntableBot
     send request
   end
 
+  def pm user, message
+      request = {:api => 'pm.send', 'receiverid' => user, 'text' => message }
+      send request
+  end
+
+  def previous_song
+    @previous_song || nil
+  end
+
   def current_song
     # TODO: if no current song, query TT to get it.
     # currently this will only be set on newsong
-    @song
+    @song || nil
   end
 
   def vote direction=:up
-    direction = direction.to_s
-    vh  = Digest::SHA1.hexdigest(@room + direction + @song.id)
-    th  = Digest::SHA1.hexdigest(Random.rand.to_s)
-    ph  = Digest::SHA1.hexdigest(Random.rand.to_s)
-    request ={ :api => 'room.vote', :roomid => @room, :val => direction, :vh => vh, :th => th, :ph => ph}
-    send request
+    if @song
+      direction = direction.to_s
+      vh  = Digest::SHA1.hexdigest(@room + direction + @song.id)
+      th  = Digest::SHA1.hexdigest(Random.rand.to_s)
+      ph  = Digest::SHA1.hexdigest(Random.rand.to_s)
+      request = { :api => 'room.vote', :roomid => @room, :val => direction, :vh => vh, :th => th, :ph => ph}
+      send request
+    end
   end
 
   class Song
-    attr_reader :name, :artist, :id, :dj_name, :dj_id
-    def initialize data
-      data = data["room"]["metadata"]["current_song"]
-      @id     = data['_id']
-      @artist = data['metadata']['artist']
-      @name   = data['metadata']['song']
-      @dj_name= data['djname']
-      @dj_id  = data['djid']
+    attr_reader :title, :artist, :id, :user, :up, :down, :listeners
+    
+    def initialize data={}
+      @id     = data[:id] || nil
+      @artist = data[:artist] || nil
+      @title  = data[:title]  || nil
+      @user   = User.new :name => data[:username],
+                         :id   => data[:userid] 
+    end
+
+    def update data={}
+      @up         = data[:up] || 0
+      @down       = data[:down] || 0
+      @listeners  = data[:listeners] || 0
     end
   end
 
   class Message
-    attr_reader :from_name, :from_id, :text, :type
+    attr_reader :user, :text, :type
 
-    def initialize data
-      @from_name  = data['name']
-      @from_id    = data['userid']
-      @text       = data['text']
-      @type       = data['type']
+    def initialize data={}
+      @user       = User.new data
+      @text       = data[:text] || nil
+      @type       = data[:type] || nil
+    end
+  end
+
+  class User
+    attr_reader :name, :id
+
+    def initialize data={}
+      puts data
+      @name = data[:name] || nil
+      @id   = data[:id] || nil
     end
   end
 end
-
-

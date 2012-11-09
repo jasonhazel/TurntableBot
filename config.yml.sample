@@ -1,3 +1,5 @@
 user: userid
 auth: authkey
 room: roomid
+log_file: filename.log
+admin: different_userid
