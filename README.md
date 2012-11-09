@@ -4,12 +4,17 @@
 
 This is my first real Ruby project, so don't expect greatness. 
 
+## Installation
+
+[Download the most recent version](https://github.com/mrhazel/TurntableBot/downloads)
+Install: `gem install TurnTableBot-VERSION.gem'
+
 ## Usage
 
 This library creates a simple DSL that can be used for creating bots quickly.  Here is an example that allows members of the room to tell your bot to 'Awesome' a song.
 
 ```ruby
-require_relative "./lib/turntablebot"
+require "turntablebot"
 require "yaml"
 config = YAML::load(File.open('config.yml'))
 
