@@ -26,3 +26,7 @@ TurntableBot.create do
   end
 end
 ```
+
+## Pivotal Tracker
+
+I've set up a public [Pivotal Tracker](https://www.pivotaltracker.com/projects/685719) project.  It is integrated with GitHub, so stories will be updated with relevant information.
