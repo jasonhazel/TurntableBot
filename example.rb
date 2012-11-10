@@ -21,7 +21,7 @@ TurntableBot.create do
   end
 
   someone_entered do |user|
-    message user 'Welcome to the party?'
+    message user, 'Welcome to the party?'
   end
 
   someone_mentioned ['dance','bop'] do |message|
