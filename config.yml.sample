@@ -1,6 +1,6 @@
-user: userid
-auth: authkey
-room: roomid
-log: filename.log
-admin: 
+:user: userid
+:auth: authkey
+:room: roomid
+:log: filename.log
+:admin: 
   - different_userid

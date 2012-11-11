@@ -17,22 +17,15 @@ class TurntableApi
     @status     = "available"
   end
 
-
-  def activate
-    connect
-    notify :ready
-    while data = @socket.receive
-      incoming data
-    end
-  end
-
   def incoming data
     # this logic is pretty much identical to the ttapi version
     heartbeat_match = /~m~[0-9]+~m~(~h~[0-9]+)/
     if data =~ heartbeat_match
       heartbeat heartbeat_match.match(data)[1]
+      # puts heartbeat_match.match(data).inspect
       @heartbeat = Time.now
       presence
+      roominfo
       return
     end
 
@@ -41,8 +34,38 @@ class TurntableApi
       presence
       return
     end
+    Thread.new do
+      delegate data
+    end
+  end
 
-    delegate data
+  def update_room_info response
+    # puts response.inspect
+    # puts @song.inspect
+
+    @roominfo = response[:room]
+
+    metadata = response['room']['metadata']
+    # puts metadata['current_song']
+    unless metadata['current_song'].nil?
+      @song = Song.new  :id => metadata['current_song']['_id'],
+                        :artist => metadata['current_song']['metadata']['artist'],
+                        :title  => metadata['current_song']['metadata']['song'],
+                        :username => metadata['current_song']['djname'],
+                        :userid => metadata['current_song']['djid'],
+                        :listeners => metadata['listeners'],
+                        :up => metadata['upvotes'],
+                        :down => metadata['downvotes']
+      # @song.update
+    end
+
+    unless metadata['djs'].nil?
+      @djs = metadata['djs']
+    end
+  end
+
+  def djs
+    @djs || []
   end
 
   def delegate data
@@ -50,20 +73,14 @@ class TurntableApi
     response = JSON.parse(data[data.index("{"), data.length])
     command = response['command'].to_sym if response['command']
 
-    # fire our data listener, useful to write a logger
-    notify :data, response
+    # @waiting_response[message].call (response) unless @waiting_response[message].nil?
 
+    notify :data, response
     # handle special data
     case command
     when :newsong
-      data = response['room']['metadata']['current_song']
-      @previous_song = @song || nil
-      @song = Song.new  :id         => data['_id'],
-                        :artist     => data['metadata']['artist'],
-                        :title      => data['metadata']['song'],
-                        :username   => data['djname'],
-                        :userid     => data['djid'] 
-      @song.update
+      @previous_song = @song
+      # update_room_info response
       data = @song
     when :pmmed
       data = Message.new :id   => response['senderid'],
@@ -76,22 +93,32 @@ class TurntableApi
                           :type => 'chat',
                           :text => response['text']
       @chat_message = data
+    when :rem_dj
+      # update_room_info response
+    when :add_dj
+      # update_room_info response
     when :update_votes
-      data = response['room']['metadata']
-      @song.update :up        => data['upvotes'],
-                   :down      => data['downvotes'],
-                   :listeners => data['listeners']
-
+      # data = response['room']['metadata']
+      # @song.update_votes :up        => data['upvotes'],
+      #                    :down      => data['downvotes'],
+      #                    :listeners => data['listeners']
       data = response['room']['metadata']['votelog']
     when :registered
       data = User.new :name => response['user'][0]['name'], 
                       :id => response['user'][0]['userid'] 
     else
+      update_room_info response unless response['room'].nil?
+      roominfo if @song.nil?
       data = response
     end
 
     # @listeners[command].call data if @listeners[command]
     notify command, data
+    unless response['room'].nil?
+      update_room_info response
+      notify :roominfo, response
+    end
+
   end
 
   def notify action, data = nil
@@ -144,7 +171,10 @@ class TurntableApi
     request[:userid]    = @user unless request[:userid]
     request[:userauth]  = @auth
 
+
     message = JSON.generate request
+
+    notify :data, message
     heartbeat message
   end
 
@@ -176,17 +206,43 @@ class TurntableApi
   end
 
   def previous_song
-    @previous_song || nil
+    @previous_song || Song.new
   end
 
-  def current_song
-    # TODO: if no current song, query TT to get it.
-    # currently this will only be set on newsong
-    @song || nil
+  def playlist_add index=0, playlist='default'
+    send  :api => 'playlist.add',
+          :playlist_name => playlist,
+          :song_dict =>  { fileid: @song.id },
+          :index => index ;
+  end
+
+
+  def snag
+      sh = Digest::SHA1.hexdigest(Random.rand.to_s)
+      fh = Digest::SHA1.hexdigest(Random.rand.to_s)
+      i = [@user, @song.user.id, @song.id, @room, 'queue', 'board', 'false', 'false', sh]
+      vh = Digest::SHA1.hexdigest(i.join('/'))
+
+
+      send  :api      => 'snag.add',
+            :djid     => @song.user.id,
+            :songid   => @song.id,
+            :roomid   => @room,
+            :site     => 'queue',
+            :location => 'board',
+            :in_queue => 'false',
+            :blocked  => 'false',
+            :vh       => vh,
+            :sh       => sh,
+            :fh       => fh
+  end
+
+  def song
+    @song || Song.new
   end
 
   def vote direction=:up
-    if @song
+    unless @song.nil?
       direction = direction.to_s
       vh  = Digest::SHA1.hexdigest(@room + direction + @song.id)
       th  = Digest::SHA1.hexdigest(Random.rand.to_s)
@@ -204,12 +260,10 @@ class TurntableApi
       @title  = data[:title]  || nil
       @user   = User.new :name => data[:username],
                          :id   => data[:userid] 
-    end
-
-    def update data={}
-      @up         = data[:up] || 0
-      @down       = data[:down] || 0
-      @listeners  = data[:listeners] || 0
+      @listeners = data[:listeners]
+      @up     = data[:up]
+      @down   = data[:down]
+      # update_votes data
     end
   end
 

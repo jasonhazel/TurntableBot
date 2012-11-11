@@ -4,8 +4,27 @@ class TurntableBot < TurntableApi
   
   def self.create &block
     bot = TurntableBot.new
-    bot.instance_eval(&block)
-    bot.activate
+    # begin
+      bot.instance_eval(&block)
+      bot.activate  
+    # rescue Exception => e
+    #   puts e.inspect
+    #   bot.tell_admins "Crashing... #{e.inspect}"
+    #   bot.disconnect
+    # end
+  end
+
+  def disconnect
+    send :api => "room.deregister", :roomid => @room
+  end
+
+  def activate
+    connect
+    notify :ready
+
+    while data = @socket.receive
+      incoming data
+    end
   end
 
   def as_user user
@@ -109,10 +128,53 @@ class TurntableBot < TurntableApi
 
   def start_djing
     add_dj
+    # roominfo
   end
 
   def stop_djing
     rem_dj
+    # roominfo
+  end
+
+  def when_solo_dj &block
+    on :roominfo do
+      if djs.length <= 1 and not djs.include? @user and not @waiting_on_room
+        @waiting_on_room = true
+        block.call
+        @waiting_on_room = false
+      end
+    end
+  end
+
+  def when_enough_djs &block
+    on :roominfo do
+      if djs.length > 2 and djs.include? @user
+        block.call
+      end
+    end
+  end
+
+  def when_ready &block
+    on :ready do
+      block.call
+    end
+  end
+
+  def song_ended &block
+    on :newsong do |song|
+      # puts previous_song.inspect
+      block.call(previous_song)
+    end
+  end
+
+  def song_started &block
+    on :newsong do |song|
+      block.call(song)
+    end
+  end
+
+  def heart
+    playlist_add
   end
 
   def say message
