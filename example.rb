@@ -1,4 +1,10 @@
 require_relative './lib/turntablebot.rb'
+require_relative './lib/extensions/admin.rb'
+require_relative './lib/extensions/dj.rb'
+require_relative './lib/extensions/pm.rb'
+require_relative './lib/extensions/room.rb'
+
+
 require "yaml"
 config = YAML::load(File.open('config.yml'))
 
@@ -38,6 +44,14 @@ TurntableBot.create do
       lame
     end
 
+    admin_messaged_matching /say (.+$)/i do |message|
+      say message.parts[1]
+    end
+
+    admin_messaged_matching /tell djs (.+$)/i do |message|
+      tell_djs message.parts[1]
+    end
+
     admin_messaged_saying 'quit' do |message|
       message message.user, 'Shutting down.'
 
@@ -55,12 +69,16 @@ TurntableBot.create do
     admin_messaged_saying 'snag' do |message|
       heart
       message message.user, "#{song.title} snagged."
-      message song.user, 'Good play.'
     end
 
     admin_messaged_saying 'stop djing' do |message|
       stop_djing
       message message.user, 'Stepping down.'
+    end
+
+    admin_messaged_saying 'skip song' do |message|
+      skip_song
+      message message.user, 'Skipping song'
     end
 
     song_ended do |song|
@@ -80,7 +98,7 @@ TurntableBot.create do
 
     when_solo_dj do
       start_djing
-      say "I guess I'll play for a bit."
+      say "I guess I'll spin for a bit."
     end
 
     when_enough_djs do
