@@ -17,7 +17,7 @@ TurntableBot.create do
   log do |data|
     
     now = Time.new
-    timestamp = now.strftime('%Y-%m-%d-%p')
+    timestamp = now.strftime('%Y-%m-%d')
     log_file = "#{File.dirname(__FILE__)}/#{config[:logs]}/#{timestamp}.log"
       
     File.open(log_file, 'a') do |file|
