@@ -74,6 +74,7 @@ class TurntableApi
 
   def delegate data
     response = JSON.parse(data[data.index("{"), data.length])
+
     command = response['command'].to_sym if response['command']
 
     notify response['msgid'], response

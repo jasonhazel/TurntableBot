@@ -14,10 +14,14 @@ TurntableBot.create do
   in_room         config[:room]
   admins          config[:admin]
 
-  # log all api responses
   log do |data|
-    File.open(config[:log], 'a') do |file|
-      file.puts "[#{Time.now}] #{data}"
+    
+    now = Time.new
+    timestamp = now.strftime('%Y-%m-%d-%p')
+    log_file = "#{File.dirname(__FILE__)}/#{config[:logs]}/#{timestamp}.log"
+      
+    File.open(log_file, 'a') do |file|
+      file.puts "[#{now}] #{data}"
     end
   end
 
