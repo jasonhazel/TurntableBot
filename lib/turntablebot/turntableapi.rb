@@ -1,6 +1,6 @@
 require "rubygems"
 # require "turntablebot/websocket"
-require_relative './websocket'
+require 'websocket'
 require "uri"
 require "net/http"
 require "json"
@@ -10,12 +10,30 @@ class TurntableApi
   # this is the DSL magic
 
   attr_reader :djs, :users
+  attr_accessor :room
 
   def initialize
     @listeners  = {}
     @_msgId     = 0
     @_clientId  = "#{Time.now.to_i}-0.59633534294921572"
     @status     = "available"
+  end
+
+  def connect
+    # another method that is pretty much identical to the ttapi
+    uri = URI.parse "http://turntable.fm:80/api/room.which_chatserver?roomid=#{@room}"
+    response = Net::HTTP.get_response uri
+    response = JSON.parse response.body
+    host, port = response[1]["chatserver"][0], response[1]["chatserver"][1]
+    url = "ws://#{host}:#{port}/socket.io/websocket"
+    @socket = WebSocket.new url
+    
+    register
+    notify :ready
+
+    while data = @socket.receive
+      incoming data
+    end
   end
 
   def incoming data
@@ -34,87 +52,13 @@ class TurntableApi
       presence
       return
     end
-    Thread.new do
-      delegate data
-    end
-  end
 
-  def update_room_info response
-    metadata = response['room']['metadata']
-
-    unless response['users'].nil?
-      users = response['users']
-      @users = {}
-      users.each do |user_info|
-        user = User.new :id => user_info['_id'], :name => user_info['name']
-        @users[user.id] = user
-      end
-    end
-
-    unless metadata['current_song'].nil?
-      @song = Song.new  :id => metadata['current_song']['_id'],
-                        :artist => metadata['current_song']['metadata']['artist'],
-                        :title  => metadata['current_song']['metadata']['song'],
-                        :username => metadata['current_song']['djname'],
-                        :userid => metadata['current_song']['djid'],
-                        :listeners => metadata['listeners'],
-                        :up => metadata['upvotes'],
-                        :down => metadata['downvotes']
-    end
-
-    unless metadata['djs'].nil?
-      @djs = {}
-      metadata['djs'].each do |userid|
-        @djs[userid] = @users[userid]
-      end
-    end
-
-    notify :roominfo, response
-  end
-
-  def delegate data
     response = JSON.parse(data[data.index("{"), data.length])
+    notify :incoming, response
+  end
 
-    command = response['command'].to_sym if response['command']
+  def process data
 
-    notify response['msgid'], response
-
-    notify :data, response
-
-    case command
-    when :newsong
-      @previous_song = @song
-      # update_room_info response
-      data = @song
-    when :add_dj
-      roominfo
-    when :rem_dj
-      roominfo
-    when :pmmed
-      data = Message.new :id   => response['senderid'],
-                         :type => 'pm',
-                         :text => response['text']
-    when :speak
-      response["type"] = "chat"
-      data = Message.new  :name => response['name'],
-                          :id   => response['userid'],
-                          :type => 'chat',
-                          :text => response['text']
-      @chat_message = data
-    when :update_votes
-      data = response['room']['metadata']['votelog']
-    when :registered
-      data = User.new :name => response['user'][0]['name'], 
-                      :id => response['user'][0]['userid'] 
-    else
-      data = response
-    end
-
-    unless response['room'].nil?
-      update_room_info response
-    end
-
-    notify command, data
   end
 
   def notify action, data = nil
@@ -136,26 +80,17 @@ class TurntableApi
     send request
   end
 
-
   def roominfo
     send :api => "room.info", :roomid => @room
   end
 
-
-  def connect
-    # another method that is pretty much identical to the ttapi
-    uri = URI.parse "http://turntable.fm:80/api/room.which_chatserver?roomid=#{@room}"
-    response = Net::HTTP.get_response uri
-    response = JSON.parse response.body
-    host, port = response[1]["chatserver"][0], response[1]["chatserver"][1]
-    url = "ws://#{host}:#{port}/socket.io/websocket"
-    @socket = WebSocket.new url
-    register
+  def register
+    send :api => 'room.register', :roomid => @room
   end
 
-  def register
-    send :api => 'room.register', 
-         :roomid => @room
+
+  def deregister
+    send :api => "room.deregister", :roomid => @room
   end
 
   def send request={}
@@ -227,6 +162,7 @@ class TurntableApi
 
 
   def snag song_to_snag=nil
+    # can't figure out why this isn't working.
       song_to_snag = @song if song_to_snag.nil?
 
       sh = Digest::SHA1.hexdigest(Random.rand.to_s)
@@ -262,41 +198,6 @@ class TurntableApi
     end
   end
 
-  class Song
-    attr_reader :title, :artist, :id, :user, :up, :down, :listeners
-    
-    def initialize data={}
-      @id     = data[:id] || nil
-      @artist = data[:artist] || nil
-      @title  = data[:title]  || nil
-      @user   = User.new :name => data[:username],
-                         :id   => data[:userid] 
-      @listeners = data[:listeners]
-      @up     = data[:up]
-      @down   = data[:down]
-      # update_votes data
-    end
-  end
 
-  class Message
-    attr_reader :user, :text, :type, :parts
-    attr_accessor :parts
-
-    def initialize data={}
-      @user       = User.new data
-      @text       = data[:text] || nil
-      @type       = data[:type] || nil
-      @parts      = []
-    end
-  end
-
-  class User
-    attr_reader :name, :id
-
-    def initialize data={}
-      @name = data[:name] || nil
-      @id   = data[:id] || nil
-    end
-  end
 
 end

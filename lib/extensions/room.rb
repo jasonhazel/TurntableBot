@@ -2,40 +2,38 @@ class TurntableBot
 
   def someone_entered &block
     on :registered do |user|
-      block.call(user) unless user.id == @user
+      block.call(user) unless user.include? @user
     end
   end
 
   def i_entered &block
     on :registered do |user|
-      block.call(user) if user.id == @user
+      block.call(user) if user.include? @user
     end
     # roominfo
   end
 
   def someone_said phrase, &block
     on :speak do |message|
-      unless message.user.id == @user
-        block.call(message) if message.text == phrase
+      phrase = [phrase] if [String, Regexp].include? phrase.class
+      phrase.each do |listen_for|
+        if listen_for.match message.text
+          message.parts = message.text.match listen_for
+          block.call message
+          break
+        end
       end
     end
   end
 
-  def someone_mentioned phrases, &block
-    on :speak do |message|
-      unless message.user.id == @user
-        block.call(message) if phrases.include? message.text
-      end
-    end
-  end
   def song_ended &block
-    on :newsong do |song|
-      block.call(previous_song)
+    on :previous_song do |song|
+      block.call(song) unless song.nil?
     end
   end
 
   def song_started &block
-    on :newsong do |song|
+    on :new_song do |song|
       block.call(song)
     end
   end

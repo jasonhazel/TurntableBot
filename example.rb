@@ -1,3 +1,5 @@
+#!/usr/bin/env ruby
+#
 require_relative './lib/turntablebot.rb'
 require_relative './lib/extensions/admin.rb'
 require_relative './lib/extensions/dj.rb'
@@ -16,12 +18,14 @@ TurntableBot.create do
 
   log do |data|
     
-    now = Time.new
-    timestamp = now.strftime('%Y-%m-%d')
-    log_file = "#{File.dirname(__FILE__)}/#{config[:logs]}/#{timestamp}.log"
-      
-    File.open(log_file, 'a') do |file|
-      file.puts "[#{now}] #{data}"
+    if data['room'].nil?
+      now = Time.new
+      timestamp = now.strftime('%Y-%m-%d')
+      log_file = "#{File.dirname(__FILE__)}/#{config[:logs]}/#{timestamp}.log"
+        
+      File.open(log_file, 'a') do |file|
+        file.puts "[#{now}] #{data}"
+      end
     end
   end
 
@@ -31,70 +35,71 @@ TurntableBot.create do
     end
 
     someone_entered do |user|
-      message user, 'Welcome to the party?'
+      # puts user.inspect
+      user.each do |id, info|
+        message info, 'Welcome to the party?'
+      end
+      
     end
 
-    someone_mentioned ['dance','bop'] do |message|
+    someone_said ['dance','bop'] do |message|
       say "Look at me, #{message.user.name}, I'm dancing! "
       vote 
     end
 
-    someone_said '/roll' do |message|
-      say 'var randNumber = 4;'
-    end
-
-    admin_messaged_mentioning ['boo','barf','lame'] do |message|
+    admin_messaged ['boo','barf','lame'] do |message|
       message message.user, 'Song lamed.'
       lame
     end
 
-    admin_messaged_matching /say (.+$)/i do |message|
+    admin_messaged /say (.+$)/i do |message|
       say message.parts[1]
     end
 
-    admin_messaged_matching /tell djs (.+$)/i do |message|
+    admin_messaged /tell djs (.+$)/i do |message|
       tell_djs message.parts[1]
     end
 
-    admin_messaged_saying 'quit' do |message|
+    admin_messaged 'quit' do |message|
       message message.user, 'Shutting down.'
-
     end
 
-    message_recieved_saying 'current' do |message|
+    someone_messaged 'current' do |message|
       message message.user, "#{song.title} - :arrow_up: #{song.up} :arrow_down: #{song.down} :speaker: #{song.listeners}"
     end
 
-    admin_messaged_saying 'start djing' do |message|
+    admin_messaged 'start djing' do |message|
       start_djing
       message message.user, 'Party mode: Activated.'
     end
 
-    admin_messaged_saying 'snag' do |message|
+    admin_messaged 'snag' do |message|
       heart
       message message.user, "#{song.title} snagged."
     end
 
-    admin_messaged_saying 'stop djing' do |message|
+    admin_messaged 'stop djing' do |message|
       stop_djing
       message message.user, 'Stepping down.'
     end
 
-    admin_messaged_saying 'skip song' do |message|
+    admin_messaged ['skip song','skip'] do |message|
       skip_song
       message message.user, 'Skipping song'
     end
 
     song_ended do |song|
-      message song.user, "#{song.title} - :arrow_up: #{song.up} :arrow_down: #{song.down} :speaker: #{song.listeners}"
+      # puts song.inspect
+      message song.dj, song.title
+      message song.dj, ":arrow_up: #{song.up} :arrow_down: #{song.down} :heart_decoration: #{song.hearts} :speaker: #{song.listeners}"
     end
 
     song_started do |song|
       # if you bot is djing, show love to the others
-      if djs.include? config[:user]
+      if is_dj? config[:user] and not am_i? song.dj
         # wait for a bit before voting
         Thread.new do
-          sleep 20
+          sleep rand(60 - 20) + 20
           vote
         end
       end

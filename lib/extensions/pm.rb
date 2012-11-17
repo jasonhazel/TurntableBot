@@ -3,14 +3,18 @@ class TurntableBot
     pm user.id, with
   end
 
-  def message_recieved_saying phrase, &block
+
+  def someone_messaged phrase, &block
     on :pmmed do |message|
-      block.call(message) if message.text == phrase
-    end
-  end
-  def message_recieved_mentioning phrase, &block
-    on :pmmed do |message|
-      block.call(message) if message.text.include? phrase
+      phrase = [phrase] if [String, Regexp].include? phrase.class
+
+      phrase.each do |listen_for|
+        if listen_for.match message.text
+          message.parts = message.text.match listen_for
+          block.call message
+          break
+        end
+      end
     end
   end
 end

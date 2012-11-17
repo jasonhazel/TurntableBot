@@ -13,17 +13,29 @@ class TurntableBot
 
   def when_solo_dj &block
     on :roominfo do
-      if djs.length <= 1 and not djs.include? @user and not @waiting_on_room
+      if not djs.nil? and  djs.length <= 1 and not djs.include? @user and not @waiting_on_room
         @waiting_on_room = true
         block.call
         @waiting_on_room = false
       end
     end
+  end
+
+  def am_i? user
+    @user == user.id
+  end
+
+  def is_dj? user
+    @djs.include? user
   end
 
   def when_enough_djs &block
     on :roominfo do
-      if djs.length > 2 and djs.include? @user and not @waiting_on_room and not song.user.id @user
+      @djs = {} if @djs.nil?
+
+
+      count = @djs.length || 5 # if error with number of djs, assume full.
+      if not djs.nil? and djs.length > 2 and is_dj? @user and not @waiting_on_room and not am_i? song.dj
         @waiting_on_room = true
         block.call
         @waiting_on_room = false
@@ -31,11 +43,7 @@ class TurntableBot
     end
   end
 
-
-  def tell_djs message
-    @djs.each do |id, dj|
-      message dj, message
-    end
-  end  
-
+  def djs
+    @djs
+  end
 end
