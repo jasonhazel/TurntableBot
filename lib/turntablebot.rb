@@ -4,14 +4,14 @@ class TurntableBot < TurntableApi
   
   def self.create &block
     bot = TurntableBot.new
-    # begin
+    begin
       bot.instance_eval(&block)
       bot.connect  
-    # rescue Exception => e
-    #   puts e.inspect
-    #   bot.tell_admins "Crashing... #{e.inspect}"
-    #   bot.deregister
-    # end
+    rescue Exception => e
+      puts e.inspect
+      bot.tell_admins "Crashing... #{e.inspect}"
+      bot.deregister
+    end
   end
 
   def as_user user
