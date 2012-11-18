@@ -4,14 +4,14 @@ class TurntableBot < TurntableApi
   
   def self.create &block
     bot = TurntableBot.new
-    begin
+    # begin
       bot.instance_eval(&block)
       bot.connect  
-    rescue Exception => e
-      puts e.inspect
-      bot.tell_admins "Crashing... #{e.inspect}"
-      bot.deregister
-    end
+    # rescue Exception => e
+    #   puts e.inspect
+    #   bot.tell_admins "Crashing... #{e.inspect}"
+    #   bot.deregister
+    # end
   end
 
   def as_user user
@@ -122,7 +122,7 @@ class TurntableBot < TurntableApi
         roominfo
       when :snagged
         @song.hearts = @song.hearts+1
-        puts
+        puts @song.inspect
         notify :snagged, response
       else
         notify command, response

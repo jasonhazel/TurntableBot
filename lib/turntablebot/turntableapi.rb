@@ -1,5 +1,4 @@
 require "rubygems"
-# require "turntablebot/websocket"
 require_relative './websocket'
 require "uri"
 require "net/http"

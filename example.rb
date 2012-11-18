@@ -1,27 +1,38 @@
 #!/usr/bin/env ruby
-#
-require_relative './lib/turntablebot.rb'
-require_relative './lib/extensions/admin.rb'
-require_relative './lib/extensions/dj.rb'
-require_relative './lib/extensions/pm.rb'
-require_relative './lib/extensions/room.rb'
-
-
+require "active_record"
+require "sqlite3"
 require "yaml"
+require "time_diff"
+
 config = YAML::load(File.open('config.yml'))
 
+# our database connection.  we're using ActiveRecord.
+ActiveRecord::Base.establish_connection( YAML::load(File.open('database.yml')))
+
+# load all of our extensions.
+require_relative './lib/turntablebot'
+Dir.glob('./extensions/*').each do |file|
+  require file
+  # puts file
+end
+
+# load models
+Dir.glob('./models/*').each do |file|
+  require file
+end
+
 TurntableBot.create do
-  as_user         config[:user]
-  authorized_by   config[:auth]
-  in_room         config[:room]
-  admins          config[:admin]
+  as_user         config['user']
+  authorized_by   config['auth']
+  in_room         config['room']
+  admins          config['admin']
 
   log do |data|
     
-    if data['room'].nil?
+    if data['room'].nil? or not data['command'].nil? # logging all the room data is a lot
       now = Time.new
       timestamp = now.strftime('%Y-%m-%d')
-      log_file = "#{File.dirname(__FILE__)}/#{config[:logs]}/#{timestamp}.log"
+      log_file = "#{File.dirname(__FILE__)}/#{config['logs']}/#{timestamp}.log"
         
       File.open(log_file, 'a') do |file|
         file.puts "[#{now}] #{data}"
@@ -68,6 +79,12 @@ TurntableBot.create do
       message message.user, "#{song.title} - :arrow_up: #{song.up} :arrow_down: #{song.down} :speaker: #{song.listeners}"
     end
 
+    someone_said 'lastseen' do |message|
+      song_history = History.last(:conditions => ['song_id = ?',@song.id])
+      how_long_ago = Time.diff(song_history.created_at, Time.now, '%H %N')
+      say "#{@song.title} last played #{how_long_ago[:diff]} ago by #{song_history.dj_name}."
+    end
+
     admin_messaged 'start djing' do |message|
       start_djing
       message message.user, 'Party mode: Activated.'
@@ -92,11 +109,30 @@ TurntableBot.create do
       # puts song.inspect
       message song.dj, song.title
       message song.dj, ":arrow_up: #{song.up} :arrow_down: #{song.down} :heart_decoration: #{song.hearts} :speaker: #{song.listeners}"
+      History.create :song_id   => song.id,
+                     :title     => song.title,
+                     :artist    => song.artist,
+                     :dj_id     => song.dj.id,
+                     :dj_name   => song.dj.name,
+                     :upvotes   => song.up,
+                     :downvotes => song.down,
+                     :hearts    => song.hearts,
+                     :listeners => song.listeners
     end
 
     song_started do |song|
+      song_history = History.last(:conditions => ["song_id = ?", song.id])
+      unless song_history.nil? or @song.nil?
+        if song_history.created_at > Time.now - (60 * 60)
+          say "Hey, @#{song.dj.name}, this song was recently played by #{song_history.dj_name}. Please skip."
+        end
+      end
+    end
+
+
+    song_started do |song|
       # if you bot is djing, show love to the others
-      if is_dj? config[:user] and not am_i? song.dj
+      if is_dj? config['user'] and not am_i? song.dj
         # wait for a bit before voting
         Thread.new do
           sleep rand(60 - 20) + 20
