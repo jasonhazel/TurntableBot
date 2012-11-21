@@ -79,7 +79,7 @@ TurntableBot.create do
       message message.user, "#{song.title} - :arrow_up: #{song.up} :arrow_down: #{song.down} :speaker: #{song.listeners}"
     end
 
-    someone_said 'lastseen' do |message|
+    someone_said ['lastseen','last seen','lastplayed','last played'] do |message|
       song_history = History.last(:conditions => ['song_id = ?',@song.id])
       how_long_ago = Time.diff(song_history.created_at, Time.now, '%H %N')
       say "#{@song.title} last played #{how_long_ago[:diff]} ago by #{song_history.dj_name}."

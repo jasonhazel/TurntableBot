@@ -22,7 +22,7 @@ class TurntableBot
   end
 
   def am_i? user
-    @user == user.id
+    @user == user.id unless user.nil?
   end
 
   def is_dj? user

@@ -17,7 +17,7 @@ class TurntableBot
     on :speak do |message|
       phrase = [phrase] if [String, Regexp].include? phrase.class
       phrase.each do |listen_for|
-        if listen_for.match message.text
+        if message.text.match listen_for
           message.parts = message.text.match listen_for
           block.call message
           break
